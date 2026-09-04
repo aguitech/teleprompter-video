@@ -1,0 +1,11 @@
+# Storage de sesiones
+# Cada sesión se guarda como sess_YYYYMMDD_HHMMSS_xxxxx/
+# con: input.webm, frames/, processed/, output.mp4, meta.json
+
+# NO subir sesiones al repo (son archivos pesados y únicos por sesión)
+sess_*/
+*.webm
+*.mp4
+*.jpg
+*.png
+!placeholder.txt

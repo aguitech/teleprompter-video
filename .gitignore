@@ -1,0 +1,16 @@
+# OS
+.DS_Store
+Thumbs.db
+
+# Editor
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Node (por si en el futuro)
+node_modules/
+package-lock.json
+
+# Storage (videos pesados, sesiones únicas)
+storage/sessions/sess_*/
