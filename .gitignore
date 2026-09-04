@@ -8,9 +8,14 @@ Thumbs.db
 *.swp
 *.swo
 
-# Node (por si en el futuro)
+# Node
 node_modules/
 package-lock.json
 
-# Storage (videos pesados, sesiones únicas)
-storage/sessions/sess_*/
+# Storage pesado
+storage/sessions/*/
+storage/db/*.sqlite
+storage/db/*.sqlite-journal
+
+# Router PHP solo para testing local
+api/router.php

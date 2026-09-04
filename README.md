@@ -1,36 +1,50 @@
-# AGUITECH Teleprompter Video
+# AGUITECH Teleprompter Video (Multi-Escena)
 
 > **BanCoppel · Afore Coppel — Herramienta interna de producción**
 
-Teleprompter + Grabación de video en greenscreen + Post-producción automática con chroma key en PHP.
+Teleprompter + Grabación de **N escenas** con greenscreen + Post-producción con chroma key en PHP.
+
+De 1 a 20 textos independientes. Cada uno graba su clip, se procesa individualmente con PHP+FFmpeg+GD, y todo queda guardado en una sesión en SQLite con video final concatenable.
 
 ---
 
-## 🚀 Demo en producción
+## 🚀 Demo
 
 👉 **https://aguitech.github.io/teleprompter-video/**
 
 ---
 
-## 🎯 Flujo completo
+## 🎯 Flujo multi-escena
 
 ```
-┌──────────────┐   ┌──────────────┐   ┌──────────────┐   ┌──────────────┐
-│ ① Teleprompter│ → │ ② Countdown  │ → │ ③ Grabación  │ → │ ④ Post-prod  │
-│   3-2-1      │   │   en pantalla│   │  greenscreen │   │   PHP+FFmpeg │
-└──────────────┘   └──────────────┘   └──────────────┘   └──────────────┘
-                                                                  ↓
-                                                          ┌──────────────┐
-                                                          │ ⑤ MP4 final  │
-                                                          │  descargable │
-                                                          └──────────────┘
+┌──────────────────────────────────────────────────┐
+│ SESIÓN (1)                                        │
+│                                                    │
+│  ┌──────────┐  ┌──────────┐  ┌──────────┐        │
+│  │ Escena 1 │  │ Escena 2 │  │ Escena N │  ...   │
+│  │ texto+tp │  │ texto+tp │  │ texto+tp │        │
+│  │ grabar   │  │ grabar   │  │ grabar   │        │
+│  │ WebM     │  │ WebM     │  │ WebM     │        │
+│  └────┬─────┘  └────┬─────┘  └────┬─────┘        │
+│       ↓             ↓             ↓                │
+│  ┌──────────┐  ┌──────────┐  ┌──────────┐        │
+│  │ MP4 #1   │  │ MP4 #2   │  │ MP4 #N   │        │
+│  └──────────┘  └──────────┘  └──────────┘        │
+│       ↓             ↓             ↓                │
+│       └─────────────┼─────────────┘                │
+│                     ↓                              │
+│              ┌────────────┐                        │
+│              │ Final MP4  │ (concat.php)           │
+│              └────────────┘                        │
+└──────────────────────────────────────────────────┘
 ```
 
-1. **Escribe el guion** en el editor (con plantillas para BanCoppel / Afore Coppel)
-2. **Countdown 3-2-1** aparece en pantalla
-3. **Graba** con webcam mientras el teleprompter se desplaza
-4. **Sube a PHP** → backend extrae frames con FFmpeg, aplica chroma key pixel por pixel con GD, recompone MP4
-5. **Descarga el video** con fondo transparente o color corporativo
+1. **Configura sesión** — título, marca, N (1-20) escenas, chroma global
+2. **Escribe N textos** — cada uno con su textarea
+3. **Graba N clips** — countdown 3-2-1 + teleprompter + MediaRecorder
+4. **Procesa batch** — backend PHP aplica chroma a cada clip individual
+5. **Concat (opcional)** — une todos los clips en 1 MP4 final
+6. **Descarga** — cada MP4 por escena o el video final
 
 ---
 
@@ -46,153 +60,40 @@ Teleprompter + Grabación de video en greenscreen + Post-producción automática
 
 ## ✨ Features del frontend
 
-- **Teleprompter** con scroll automático, velocidad ajustable (10-120 px/s), tamaño (24-120px), 4 colores
-- **Plantillas pre-cargadas** para BanCoppel y Afore Coppel (3 tipos de guion)
-- **Countdown 3-2-1** animado, con pulso de color amarillo
-- **MediaRecorder API** — graba webcam + micrófono en WebM
-- **Preview en vivo** con chroma key aplicado en tiempo real (canvas pixel-by-pixel)
-- **Word highlight** — la palabra actual se resalta al pasar por la línea de enfoque
-- **Atajos teclado** — Space (play/pause), R (reiniciar), 1/2/3 (countdown)
-- **Galería** de sesiones producidas
-- **Selector de cámara/micrófono** — si tienes múltiples dispositivos
-- **Responsive** — desktop / tablet / mobile
+- **N escenas (1-20)** con cards individuales
+- **Chroma config global** (color, tolerancia, modo de fondo)
+- **Teleprompter modal** con scroll automático, play/pause/reset
+- **MediaRecorder API** — graba webcam + micrófono por escena
+- **Status tracking**: empty → draft → recording → recorded → uploading → processing → processed
+- **Procesamiento batch** — botón "Procesar todas las escenas"
+- **Galería** clickeable — carga sesión completa de vuelta al editor
+- **Auto-generación de directorios** en backend
+- **Word counter + char counter** en cada textarea
+- **Persist state** en localStorage para no perder cambios al recargar (próximo)
 
 ---
 
 ## ⚙️ Stack del backend PHP
 
-- **PHP 8+** con extensión GD (manipulación pixel a pixel)
-- **FFmpeg** para extracción de frames y reencoding
-- **Almacenamiento** en filesystem (no requiere BD)
-- **CORS habilitado** para acceso desde cualquier dominio
+- **PHP 8+** con extensión GD para manipulación pixel a pixel
+- **FFmpeg 6+** para extracción de frames (24fps) y reencoding H.264
+- **SQLite 3** para persistir sesiones y escenas (zero config, zero server)
+- **Almacenamiento** organizado: `storage/sessions/<session_id>/escena_NNN/{input, frames, processed, output}`
+- **CORS habilitado** para acceso desde GitHub Pages
 
-### Endpoints
+### Endpoints (7)
 
 | Método | Ruta | Función |
 |---|---|---|
-| `POST` | `/api/process.php` | Recibe WebM, procesa con chroma, devuelve MP4 |
-| `GET` | `/api/list.php` | Lista todas las sesiones procesadas |
-| `GET` | `/api/download.php?id=<session>` | Descarga MP4 procesado |
-| `GET` | `/api/stream.php?id=<session>` | Stream MP4 con soporte Range (para `<video>` con scrub) |
-
-### Form params de `process.php`
-
-```
-video:        File WebM grabado (multipart/form-data)
-title:        string (nombre del guion)
-brand:        "bancoppel" | "afore" | "ambas"
-chroma_color: hex (#00ff00)
-tolerance:    10-180 (default 80)
-bg_mode:      "transparent" | "bancoppel" | "afore" | "custom" | "none"
-bg_color:     hex (solo si bg_mode=custom)
-```
-
-### Response
-
-```json
-{
-  "ok": true,
-  "session_id": "sess_20260904_233744_63c34c44",
-  "frames": 72,
-  "duration": 3,
-  "output_size": 5864,
-  "output_url": "https://api.aguitech.com.mx/teleprompter-video/api/download.php?id=...",
-  "gallery_url": "https://aguitech.github.io/teleprompter-video/#gallery",
-  "log": [...]
-}
-```
-
----
-
-## 🛠️ Algoritmo de chroma key
-
-Para cada frame extraído:
-
-```php
-$dist = sqrt(($r - $chroma_r)² + ($g - $chroma_g)² + ($b - $chroma_b)²);
-if ($dist < $tolerance) {
-    // pixel verde → dejar fondo (transparente o color corporativo)
-} else {
-    // pixel NO verde → copiar pixel original
-}
-```
-
-**Tolerancia recomendada:** 80-120 (compensa el chroma subsampling del encoder H.264 que deja pizcas de verde/rojo en los píxeles "puros")
-
-**Modos de salida:**
-- `transparent` → frames PNG con alpha, recompone MP4 con códec H.264
-- `bancoppel` / `afore` → fondo sólido color corporativo
-- `custom` → cualquier color hex
-- `none` → solo marca el chroma como semi-transparente (para composición manual)
-
----
-
-## 🚀 Deploy
-
-### Frontend (GitHub Pages — automático)
-
-Cada push a `main` dispara `.github/workflows/pages.yml` y redespliega.
-
-### Backend (manual — VPS / cPanel / EasyPanel)
-
-```bash
-# 1. Instalar dependencias del sistema
-apt-get install ffmpeg php-gd php-curl
-
-# 2. Subir la carpeta api/ al servidor
-
-# 3. Configurar:
-#    - CORS_ORIGIN en api/config.php si quieres restringir
-#    - STORAGE_PATH (default: storage/sessions/)
-#    - Permisos de escritura en storage/
-
-# 4. Apuntar dominio (ej. api.aguitech.com.mx/teleprompter-video/api/)
-```
-
-### Frontend apuntando al backend
-
-En `docs/assets/app.js` cambiar `API_BASE`:
-
-```js
-const API_BASE = 'https://api.aguitech.com.mx/teleprompter-video/api';
-// o para local:
-// const API_BASE = 'http://localhost:8766/api';
-```
-
----
-
-## 🧪 Test E2E local
-
-```bash
-# Genera video de prueba (verde puro)
-ffmpeg -f lavfi -i "color=c=0x00FF00:size=640x360:duration=3:rate=24" \
-       -vf "drawtext=text='TEST':fontcolor=white:fontsize=80:x=(w-text_w)/2:y=(h-text_h)/2" \
-       -c:v libx264 -pix_fmt yuv420p -t 3 -y test.mp4
-
-# Arrancar backend local
-cd api
-php -S 127.0.0.1:8766 router.php  # router.php solo para testing
-
-# Subir
-curl -X POST -F "video=@test.mp4" -F "title=Test" -F "brand=afore" \
-     -F "chroma_color=#00ff00" -F "tolerance=80" -F "bg_mode=bancoppel" \
-     http://127.0.0.1:8766/process.php
-
-# Verificar pixel procesado
-python3 -c "
-from PIL import Image
-import glob
-base = glob.glob('../storage/sessions/*')[0]
-proc = Image.open(f'{base}/processed/frame_00010.jpg')
-print('Pixel fondo:', proc.getpixel((5,5)))  # esperado: azul BanCoppel
-"
-```
-
-**Resultados verificados:**
-- ✅ 72 frames extraídos (24fps × 3s)
-- ✅ 16,298,850 pixels con chroma aplicado
-- ✅ MP4 recompilado en H.264
-- ✅ Modo transparente preserva alpha (RGBA)
+| `POST` | `/api/sessions.php` | Crea/actualiza sesión con N escenas (texto) |
+| `GET` | `/api/sessions.php` | Lista todas las sesiones |
+| `GET` | `/api/sessions.php?id=X` | Detalle de sesión con sus escenas |
+| `DELETE` | `/api/sessions.php?id=X` | Elimina sesión completa |
+| `POST` | `/api/process.php` | Procesa UNA escena (WebM → MP4 con chroma) |
+| `GET` | `/api/download.php?session=X&scene=N` | Descarga MP4 de escena |
+| `GET` | `/api/download.php?session=X&final=1` | Descarga video final concatenado |
+| `GET` | `/api/frames.php?session=X&scene=N` | Lista frames PNG/JPG de una escena |
+| `POST` | `/api/concat.php` | Une todas las escenas en MP4 final |
 
 ---
 
@@ -200,40 +101,164 @@ print('Pixel fondo:', proc.getpixel((5,5)))  # esperado: azul BanCoppel
 
 ```
 teleprompter-video/
-├── docs/                    # GitHub Pages
-│   ├── index.html           # Landing + teleprompter + recorder + gallery
+├── docs/                          # GitHub Pages
+│   ├── index.html                 # Single-page: scenes grid + gallery + API docs
 │   └── assets/
-│       ├── style.css        # Dark mode + branding BanCoppel
-│       └── app.js           # Teleprompter + MediaRecorder + chroma preview
-├── api/                     # Backend PHP
-│   ├── config.php           # CORS + helpers
-│   ├── process.php          # POST: recibe video, procesa, devuelve MP4
-│   ├── list.php             # GET: lista sesiones
-│   ├── download.php         # GET: descarga MP4
-│   └── stream.php           # GET: stream MP4 con Range support
+│       ├── style.css              # Dark mode + branding + scenes grid
+│       └── app.js                 # Multi-escena state, MediaRecorder, API client
+├── api/                           # Backend PHP
+│   ├── config.php                 # CORS + SQLite + helpers
+│   ├── sessions.php               # CRUD sesiones
+│   ├── process.php                # Procesa 1 escena con chroma
+│   ├── concat.php                 # Une N escenas en MP4 final
+│   ├── download.php               # Descarga MP4 (escena o final)
+│   ├── frames.php                 # Lista frames PNG/JPG
+│   └── list.php                   # DEPRECATED — usa sessions.php
+├── sql/
+│   └── schema.sql                 # MySQL schema (referencia)
 ├── storage/
-│   └── sessions/            # Cada sess_*/ tiene input + frames + processed + output
-├── sql/                     # (vacío — no requiere BD)
-├── .github/workflows/
-│   └── pages.yml            # Auto-deploy a Pages
+│   ├── sessions/                  # Archivos por sesión
+│   │   └── <session_id>/
+│   │       ├── escena_001/
+│   │       │   ├── input.webm
+│   │       │   ├── frames/       # 72 JPEGs extraídos
+│   │       │   ├── processed/    # 72 JPEGs chroma-aplicado
+│   │       │   └── output.mp4     # Final de la escena
+│   │       ├── escena_002/...
+│   │       ├── escena_003/...
+│   │       └── final.mp4          # Concatenado (opcional)
+│   └── db/
+│       └── teleprompter.sqlite    # BD con todas las sesiones
+├── .github/workflows/pages.yml
 ├── README.md
 └── .gitignore
 ```
 
 ---
 
+## 🗄️ Schema SQLite
+
+```sql
+CREATE TABLE sesiones (
+  id TEXT PRIMARY KEY,
+  title TEXT,
+  brand TEXT,           -- bancoppel | afore | ambas
+  chroma_color TEXT,
+  tolerance INTEGER,
+  bg_mode TEXT,         -- transparent | bancoppel | afore | custom | none
+  bg_color TEXT,
+  scenes_count INTEGER,
+  duration REAL,
+  output_final TEXT,
+  created_at TEXT,
+  updated_at TEXT
+);
+
+CREATE TABLE escenas (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  session_id TEXT NOT NULL,
+  numero INTEGER NOT NULL,
+  texto TEXT,
+  video_path TEXT,
+  output_path TEXT,
+  frames INTEGER,
+  duration REAL,
+  output_size INTEGER,
+  status TEXT,          -- draft | recording | recorded | processing | processed | error
+  error_msg TEXT,
+  created_at TEXT,
+  processed_at TEXT,
+  UNIQUE(session_id, numero),
+  FOREIGN KEY(session_id) REFERENCES sesiones(id) ON DELETE CASCADE
+);
+```
+
+(MySQL schema de referencia en `sql/schema.sql`)
+
+---
+
+## 🧪 Test E2E local
+
+```bash
+# 1. Genera 3 videos de prueba
+for i in 1 2 3; do
+  ffmpeg -f lavfi -i "color=c=0x00FF00:size=640x360:duration=3:rate=24" \
+         -vf "drawtext=text='ESCENA $i':fontcolor=white:fontsize=80:x=(w-text_w)/2:y=(h-text_h)/2" \
+         -c:v libx264 -pix_fmt yuv420p -t 3 -y scene_$i.mp4
+done
+
+# 2. Crea sesión
+curl -X POST -H "Content-Type: application/json" -d '{
+  "title": "Test", "brand": "afore",
+  "chroma_color": "#00ff00", "tolerance": 80, "bg_mode": "bancoppel",
+  "scenes": [{"numero":1,"texto":"..."},{"numero":2,"texto":"..."},{"numero":3,"texto":"..."}]
+}' http://localhost:8766/api/sessions.php
+
+# 3. Procesa cada escena
+for i in 1 2 3; do
+  curl -X POST \
+    -F "session_id=sess_xxx" \
+    -F "numero_escena=$i" \
+    -F "video=@scene_$i.mp4" \
+    -F "chroma_color=#00ff00" \
+    -F "tolerance=80" \
+    -F "bg_mode=bancoppel" \
+    http://localhost:8766/api/process.php
+done
+
+# 4. Concat
+curl -X POST -H "Content-Type: application/json" \
+  -d '{"session_id":"sess_xxx"}' \
+  http://localhost:8766/api/concat.php
+```
+
+**Resultados verificados:**
+- ✅ 3 escenas × 72 frames = 216 frames extraídos
+- ✅ 47.97M pixels con chroma aplicado (15.99M por escena)
+- ✅ 3 MP4s individuales + 1 MP4 final concatenado
+- ✅ BD SQLite con 1 sesión + 3 escenas status='processed'
+
+---
+
+## 🚀 Deploy
+
+### Frontend (GitHub Pages — automático)
+Push a `main` → `.github/workflows/pages.yml` redespliega.
+
+### Backend (VPS / EasyPanel / cPanel)
+```bash
+# 1. Dependencias
+apt-get install ffmpeg php-gd php-sqlite3 php-curl
+
+# 2. Subir carpeta api/
+
+# 3. Permisos de escritura
+chmod -R 755 storage/
+chown -R www-data:www-data storage/
+
+# 4. Configurar dominio → /api/
+# Ejemplo nginx:
+location /teleprompter-video/api/ {
+    fastcgi_pass unix:/var/run/php/php-fpm.sock;
+    include fastcgi_params;
+    fastcgi_param SCRIPT_FILENAME $document_root/teleprompter-video/api/$fastcgi_script_name;
+}
+
+# 5. Actualizar API_BASE en docs/assets/app.js
+const API_BASE = 'https://api.tu-dominio.com/teleprompter-video/api';
+```
+
+---
+
 ## ⚠️ Limitaciones conocidas
 
-1. **Chroma subsampling de H.264**: el encoder introduce pizcas de color en píxeles "puros". Por eso la tolerancia por defecto es 80, no 30. Si tu greenscreen tiene iluminación irregular, sube la tolerancia.
-
-2. **Performance del pixel-by-pixel**: PHP GD no es el más rápido. Para 720p × 30s × 24fps = ~52K frames, toma ~10-15 minutos. Para producción a escala, considera:
-   - Migrar el chroma a Python con OpenCV (`cv2.cvtColor + inRange`)
-   - Procesar en GPU con CUDA
-   - Usar ffmpeg's `chromakey` filter nativo (mucho más rápido)
-
-3. **Audio**: se preserva del video original al recompilar.
-
-4. **Sin BD**: las sesiones se guardan en filesystem. Para producción multi-tenant, agrega MySQL.
+1. **Chroma subsampling del H.264** → tolerancia default 80 (no 30)
+2. **Performance pixel-by-pixel** → ~10-15 min para 720p × 30s × 24fps. Para producción a escala:
+   - Migrar chroma a Python+OpenCV o ffmpeg's `chromakey` filter nativo
+   - GPU con CUDA
+3. **Concat usa `-c copy`** (sin re-encoding) → rápido pero requiere que todos los clips tengan el mismo codec/resolución/fps
+4. **SQLite** → suficiente para ~100k sesiones. Migrar a MySQL/Postgres para más escala
+5. **Sin auth** → agregar JWT si se expone a internet
 
 ---
 

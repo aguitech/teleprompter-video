@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Teleprompter Video · BanCoppel & Afore Coppel</title>
-<meta name="description" content="Teleprompter con countdown 3-2-1, grabación de video en greenscreen y post-producción con chroma key en PHP.">
+<meta name="description" content="Graba N escenas con teleprompter, greenscreen y post-producción automática con chroma key en PHP.">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
@@ -23,10 +23,9 @@
       </div>
     </a>
     <ul class="nav-menu">
-      <li><a href="#step1">① Guion</a></li>
-      <li><a href="#step2">② Grabación</a></li>
-      <li><a href="#step3">③ Post-producción</a></li>
-      <li><a href="#gallery">Galería</a></li>
+      <li><a href="#step1">① Producción</a></li>
+      <li><a href="#step2">② Galería</a></li>
+      <li><a href="#step3">③ API</a></li>
     </ul>
   </div>
 </nav>
@@ -39,307 +38,315 @@
       HERRAMIENTA INTERNA · BANCOPPEL & AFORE COPPEL
     </div>
     <h1 class="hero-title">
-      Teleprompter + Grabación <span class="gradient-text">en greenscreen</span>
-      con post-producción automática
+      Graba <span class="gradient-text">N escenas</span> con teleprompter,
+      greenscreen y chroma key automático
     </h1>
     <p class="hero-subtitle">
-      Escribe el guion → countdown 3-2-1 → graba con tu webcam → el backend PHP aplica
-      chroma key y produce el video final listo para usar.
+      De 1 a 9+ textos independientes. Cada uno graba su clip, se procesa con PHP+FFmpeg+GD,
+      y todo queda guardado en una sesión lista para descarga.
     </p>
 
     <div class="flow">
       <div class="flow-step">
         <div class="flow-num">1</div>
-        <div class="flow-label">Teleprompter<br>con countdown</div>
+        <div class="flow-label">Crear sesión<br>+ N guiones</div>
       </div>
       <div class="flow-arrow">→</div>
       <div class="flow-step">
         <div class="flow-num">2</div>
-        <div class="flow-label">Grabación<br>greenscreen</div>
+        <div class="flow-label">Grabar N clips<br>3-2-1 teleprompter</div>
       </div>
       <div class="flow-arrow">→</div>
       <div class="flow-step">
         <div class="flow-num">3</div>
-        <div class="flow-label">Chroma key<br>en PHP</div>
+        <div class="flow-label">Procesar batch<br>PHP+FFmpeg</div>
       </div>
       <div class="flow-arrow">→</div>
       <div class="flow-step">
         <div class="flow-num">4</div>
-        <div class="flow-label">Video final<br>descargable</div>
+        <div class="flow-label">Descargar<br>MP4 por escena</div>
       </div>
     </div>
   </div>
 </header>
 
-<!-- ============ STEP 1: EDITOR + TELEPROMPTER ============ -->
+<!-- ============ STEP 1: PRODUCCIÓN ============ -->
 <section class="section" id="step1">
   <div class="container">
-    <div class="section-head">
-      <span class="section-tag">PASO 01</span>
-      <h2 class="section-title">Escribe tu guion en el <span class="gradient-text">teleprompter</span></h2>
-      <p class="section-sub">Editor a la izquierda, vista previa del teleprompter a la derecha. Ajusta velocidad, tamaño y color.</p>
+
+    <!-- ============== SESSION HEADER ============== -->
+    <div class="session-bar">
+      <div class="session-info">
+        <div class="session-id-badge" id="session-id-badge">Sin sesión activa</div>
+        <h2 class="session-title" id="session-title-display">Nueva producción</h2>
+      </div>
+      <div class="session-actions">
+        <button id="btn-new-session" class="btn-secondary">+ Nueva sesión</button>
+        <button id="btn-save-session" class="btn-primary">💾 Guardar sesión</button>
+      </div>
     </div>
 
-    <div class="tp-app">
-      <div class="tp-sidebar">
-        <div class="tp-group">
-          <label>📝 Título del guion</label>
-          <input type="text" id="tp-title" placeholder="Ej: Bienvenida Afore Coppel Q4" value="Promo Afore Coppel">
+    <div class="session-config">
+      <div class="form-row">
+        <div>
+          <label>Título de la sesión</label>
+          <input type="text" id="session-title" placeholder="Ej: Promo Afore Q4 2026" value="Promo Afore Coppel Q4">
         </div>
-
-        <div class="tp-group">
-          <label>🎬 Marca</label>
-          <select id="tp-brand">
+        <div>
+          <label>Marca</label>
+          <select id="session-brand">
             <option value="bancoppel">BanCoppel</option>
             <option value="afore">Afore Coppel</option>
             <option value="ambas">Ambas (mixto)</option>
           </select>
         </div>
-
-        <div class="tp-group">
-          <label>⚡ Velocidad <span id="tp-speed-val">30</span> px/s</label>
-          <input type="range" id="tp-speed" min="10" max="120" value="30">
-        </div>
-
-        <div class="tp-group">
-          <label>🔠 Tamaño <span id="tp-size-val">56</span>px</label>
-          <input type="range" id="tp-size" min="24" max="120" value="56">
-        </div>
-
-        <div class="tp-group">
-          <label>🎨 Color del texto</label>
-          <div class="color-row">
-            <button class="color-swatch active" data-color="#ffffff" style="background:#ffffff"></button>
-            <button class="color-swatch" data-color="#FFD500" style="background:#FFD500"></button>
-            <button class="color-swatch" data-color="#00A651" style="background:#00A651"></button>
-            <button class="color-swatch" data-color="#003D7A" style="background:#003D7A"></button>
-          </div>
-        </div>
-
-        <div class="tp-group">
-          <label>📜 Plantillas rápidas</label>
-          <div class="template-list">
-            <button class="template-btn" data-template="bancoppel">BanCoppel · Bienvenida</button>
-            <button class="template-btn" data-template="afore">Afore Coppel · Retiro</button>
-            <button class="template-btn" data-template="promo">Promo Q4</button>
-          </div>
-        </div>
-
-        <div class="tp-group">
-          <button id="tp-load-recorder" class="btn-primary full-width">
-            Continuar a grabación →
-          </button>
+        <div>
+          <label>Número de escenas</label>
+          <input type="number" id="scene-count" min="1" max="20" value="3">
         </div>
       </div>
 
-      <div class="tp-content">
-        <div class="tp-split">
-          <div class="tp-editor-wrap">
-            <textarea id="tp-editor" placeholder="Escribe aquí tu guion...">¡Bienvenido a BanCoppel!
-
-Tu banco de confianza, cerca de ti. En BanCoppel trabajamos para ofrecerte los mejores productos financieros con la atención que mereces.
-
-Afore Coppel te ayuda a construir tu retiro. Con nuestro programa de ahorro, tu futuro está seguro.
-
-Gracias por confiar en nosotros.</textarea>
-            <div class="tp-stats">
-              <span><span id="tp-words">0</span> palabras</span>
-              <span><span id="tp-chars">0</span> chars</span>
-              <span>~<span id="tp-time">0</span> min</span>
-            </div>
-          </div>
-
-          <div class="tp-preview-wrap">
-            <div class="tp-preview" id="tp-preview">
-              <div class="tp-content-scroll" id="tp-content"></div>
-              <div class="tp-line"></div>
-              <div class="tp-countdown" id="tp-countdown" style="display:none;">
-                <span id="tp-countdown-num">3</span>
-              </div>
-            </div>
-            <div class="tp-controls">
-              <button id="tp-play" class="btn-primary">▶ Reproducir (Space)</button>
-              <button id="tp-reset" class="btn-secondary">↻ Reiniciar (R)</button>
-            </div>
-          </div>
+      <div class="chroma-config">
+        <label>🟢 Chroma key global</label>
+        <div class="chroma-row">
+          <input type="color" id="global-chroma-color" value="#00ff00" title="Color a remover">
+          <label class="inline-label">Tolerancia <span id="global-tol-val">80</span></label>
+          <input type="range" id="global-tolerance" min="10" max="180" value="80" class="tolerance-slider">
+          <label class="inline-label">Fondo</label>
+          <select id="global-bg-mode">
+            <option value="transparent">Transparente</option>
+            <option value="bancoppel">BanCoppel azul</option>
+            <option value="afore">Afore verde</option>
+            <option value="custom">Custom</option>
+            <option value="none">Sin reemplazar</option>
+          </select>
+          <input type="color" id="global-bg-color" value="#003D7A" style="display:none;">
         </div>
+      </div>
+    </div>
+
+    <!-- ============== SCENES GRID ============== -->
+    <div class="scenes-header">
+      <h3>📋 Escenas <span id="scene-count-display">3</span></h3>
+      <button id="btn-regenerate" class="btn-secondary small">🔄 Regenerar escenas</button>
+    </div>
+
+    <div class="scenes-grid" id="scenes-grid">
+      <!-- generado por JS -->
+    </div>
+
+    <!-- ============== MASTER ACTIONS ============== -->
+    <div class="master-actions">
+      <div class="master-info">
+        <div>Sesión: <strong id="master-session-id">—</strong></div>
+        <div>Guiones: <strong id="master-scenes-count">3</strong></div>
+        <div>Grabados: <strong id="master-recorded-count">0</strong></div>
+      </div>
+      <div class="master-buttons">
+        <button id="btn-process-all" class="btn-primary big" disabled>
+          ⚙️ Procesar todas las escenas (chroma key)
+        </button>
+        <button id="btn-process-status" class="status-line"></button>
       </div>
     </div>
   </div>
 </section>
 
-<!-- ============ STEP 2: RECORDING ============ -->
+<!-- ============ TEMPLATE: SCENE CARD ============ -->
+<template id="scene-template">
+  <article class="scene-card" data-scene="">
+    <header class="scene-header">
+      <div class="scene-num"></div>
+      <div class="scene-status" data-status="empty">
+        <span class="status-dot"></span>
+        <span class="status-text">Vacío</span>
+      </div>
+      <button class="scene-collapse" type="button" title="Expandir/contraer">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>
+      </button>
+    </header>
+
+    <div class="scene-body">
+      <!-- Texto del teleprompter -->
+      <div class="scene-section">
+        <label>📝 Texto del teleprompter</label>
+        <textarea class="scene-text" rows="3" placeholder="Texto que verá el presentador..."></textarea>
+        <div class="scene-meta">
+          <span class="scene-words">0 palabras</span>
+          <span class="scene-chars">0 chars</span>
+        </div>
+      </div>
+
+      <!-- Controles de grabación -->
+      <div class="scene-section">
+        <div class="scene-controls">
+          <button class="btn-preview btn-secondary small">👁 Preview</button>
+          <button class="btn-tp-play btn-secondary small">▶ TP</button>
+          <button class="btn-record btn-record small">● Grabar</button>
+          <button class="btn-stop btn-secondary small" disabled>■ Stop</button>
+          <button class="btn-upload btn-primary small" disabled>⬆ Enviar</button>
+        </div>
+
+        <!-- Video preview local -->
+        <div class="scene-video-wrap" style="display:none;">
+          <video class="scene-video" muted playsinline></video>
+          <div class="scene-overlay"></div>
+          <div class="scene-timer">00:00</div>
+        </div>
+
+        <!-- Teleprompter inline durante grabación -->
+        <div class="scene-tp-overlay" style="display:none;">
+          <div class="scene-tp-scroll"></div>
+        </div>
+
+        <!-- Progress bar -->
+        <div class="scene-progress" style="display:none;">
+          <div class="scene-progress-bar">
+            <div class="scene-progress-fill">0%</div>
+          </div>
+          <div class="scene-progress-status">Subiendo...</div>
+        </div>
+
+        <!-- Output MP4 -->
+        <div class="scene-output" style="display:none;">
+          <h4>🎬 Procesado</h4>
+          <video class="scene-playback" controls></video>
+          <div class="scene-output-actions">
+            <a class="btn-secondary small btn-download-mp4">⬇ MP4</a>
+            <a class="btn-secondary small btn-view-frames">🖼 Frames</a>
+          </div>
+        </div>
+      </div>
+    </div>
+  </article>
+</template>
+
+<!-- ============ STEP 2: GALLERY ============ -->
 <section class="section section-alt" id="step2">
   <div class="container">
     <div class="section-head">
       <span class="section-tag">PASO 02</span>
-      <h2 class="section-title">Graba con tu <span class="gradient-text">webcam en greenscreen</span></h2>
-      <p class="section-sub">Asegúrate de tener buena iluminación y un fondo verde uniforme. Click en "Iniciar grabación" y sigue el teleprompter.</p>
+      <h2 class="section-title">Galería de <span class="gradient-text">producciones</span></h2>
+      <p class="section-sub">Sesiones guardadas en el backend PHP. Cada sesión contiene N escenas procesadas.</p>
     </div>
 
-    <div class="rec-app">
-      <div class="rec-stage">
-        <div class="rec-viewport">
-          <video id="rec-video" autoplay muted playsinline></video>
-          <canvas id="rec-canvas" style="display:none;"></canvas>
-          <div class="rec-teleprompter" id="rec-teleprompter" style="display:none;">
-            <div class="rec-tp-scroll" id="rec-tp-scroll"></div>
-          </div>
-          <div class="rec-overlay" id="rec-overlay">
-            <div class="rec-status" id="rec-status">Sin grabación</div>
-          </div>
-          <div class="rec-timer" id="rec-timer" style="display:none;">00:00</div>
-        </div>
-
-        <div class="rec-controls">
-          <button id="rec-precount" class="btn-secondary">⏱ Iniciar 3-2-1</button>
-          <button id="rec-start" class="btn-record" disabled>● Grabar</button>
-          <button id="rec-stop" class="btn-secondary" disabled>■ Detener</button>
-        </div>
-      </div>
-
-      <div class="rec-sidebar">
-        <div class="rec-group">
-          <h4>📹 Dispositivo</h4>
-          <select id="rec-camera">
-            <option value="">Cámara por defecto</option>
-          </select>
-        </div>
-
-        <div class="rec-group">
-          <h4>🎤 Audio</h4>
-          <select id="rec-mic">
-            <option value="">Micrófono por defecto</option>
-          </select>
-        </div>
-
-        <div class="rec-group">
-          <h4>🎨 Fondo del video</h4>
-          <select id="rec-bg">
-            <option value="transparent">Transparente (chroma key)</option>
-            <option value="bancoppel">BanCoppel · Azul corporativo</option>
-            <option value="afore">Afore Coppel · Verde</option>
-            <option value="custom">Color personalizado</option>
-            <option value="none">Sin reemplazar</option>
-          </select>
-          <input type="color" id="rec-bg-color" value="#003D7A" style="display:none; margin-top:0.5rem; width:100%;">
-        </div>
-
-        <div class="rec-group">
-          <h4>🟢 Chroma key</h4>
-          <div class="chroma-controls">
-            <label>Color a remover</label>
-            <input type="color" id="rec-chroma-color" value="#00ff00">
-            <label>Tolerancia <span id="rec-tol-val">40</span></label>
-            <input type="range" id="rec-tol" min="10" max="120" value="40">
-          </div>
-        </div>
-
-        <div class="rec-group" id="rec-preview-group" style="display:none;">
-          <h4>👁 Preview con chroma</h4>
-          <video id="rec-preview" muted loop playsinline style="width:100%; border-radius:8px;"></video>
-        </div>
-
-        <div class="rec-group">
-          <h4>⌨️ Atajos</h4>
-          <div class="shortcuts-mini">
-            <kbd>Space</kbd> Play teleprompter<br>
-            <kbd>R</kbd> Reiniciar<br>
-            <kbd>1</kbd>/<kbd>2</kbd>/<kbd>3</kbd> Countdown
-          </div>
-        </div>
-      </div>
+    <div class="gallery-controls">
+      <button id="btn-gallery-refresh" class="btn-secondary small">🔄 Refrescar</button>
+      <span id="gallery-count">— sesiones</span>
     </div>
 
-    <div id="rec-output" class="rec-output" style="display:none;">
-      <h3>🎬 Video grabado</h3>
-      <video id="rec-playback" controls></video>
-      <div class="rec-output-actions">
-        <button id="rec-download" class="btn-primary">⬇ Descargar WebM</button>
-        <button id="rec-process" class="btn-secondary">⚙️ Enviar a PHP para chroma</button>
-      </div>
-      <div class="rec-progress" id="rec-progress" style="display:none;">
-        <div class="rec-progress-bar">
-          <div class="rec-progress-fill" id="rec-progress-fill">0%</div>
-        </div>
-        <div class="rec-progress-status" id="rec-progress-status">Subiendo...</div>
-      </div>
+    <div id="gallery-grid" class="gallery-grid">
+      <div class="gallery-empty">Cargando galería...</div>
     </div>
   </div>
 </section>
 
-<!-- ============ STEP 3: POST-PRODUCTION ============ -->
+<!-- ============ STEP 3: API DOCS ============ -->
 <section class="section" id="step3">
   <div class="container">
     <div class="section-head">
       <span class="section-tag">PASO 03</span>
-      <h2 class="section-title">Post-producción <span class="gradient-text">automática en PHP</span></h2>
-      <p class="section-sub">El backend recibe tu video, extrae frames con FFmpeg, aplica chroma key pixel por pixel, y recompone el video final.</p>
+      <h2 class="section-title">API del <span class="gradient-text">backend PHP</span></h2>
+      <p class="section-sub">Backend standalone con SQLite. Procesa cada escena con FFmpeg+GD y devuelve MP4.</p>
     </div>
 
-    <div class="post-flow">
-      <div class="post-step">
-        <div class="post-num">A</div>
-        <h4>Recepción</h4>
-        <p>Subes el WebM → el servidor lo guarda con un session_id único.</p>
-      </div>
-      <div class="post-step">
-        <div class="post-num">B</div>
-        <h4>Extracción</h4>
-        <p>FFmpeg extrae frames a 24fps como PNGs numerados.</p>
-      </div>
-      <div class="post-step">
-        <div class="post-num">C</div>
-        <h4>Chroma key</h4>
-        <p>PHP con GD lee cada PNG, aplica threshold al verde, marca alpha=0 en píxeles match.</p>
-      </div>
-      <div class="post-step">
-        <div class="post-num">D</div>
-        <h4>Recompone</h4>
-        <p>FFmpeg recombina los PNGs modificados en MP4 con audio original.</p>
-      </div>
-    </div>
+    <div class="endpoints-grid">
+      <div class="endpoint-card">
+        <div class="endpoint-method post">POST</div>
+        <h4>/api/sessions.php</h4>
+        <p>Crea o actualiza una sesión con N guiones.</p>
+        <pre><code>POST /api/sessions.php
+Content-Type: application/json
 
-    <div class="api-card">
-      <h4>📡 Endpoint PHP</h4>
-      <pre><code>POST /api/process.php
+{
+  "id": "opcional (regenera)",
+  "title": "Promo Q4",
+  "brand": "afore",
+  "chroma_color": "#00ff00",
+  "tolerance": 80,
+  "bg_mode": "transparent",
+  "scenes": [
+    { "numero": 1, "texto": "..." },
+    { "numero": 2, "texto": "..." }
+  ]
+}</code></pre>
+      </div>
+
+      <div class="endpoint-card">
+        <div class="endpoint-method get">GET</div>
+        <h4>/api/sessions.php</h4>
+        <p>Lista todas las sesiones o una específica con sus escenas.</p>
+        <pre><code>GET /api/sessions.php
+GET /api/sessions.php?id=sess_xxx
+
+Response: { sessions: [...] }</code></pre>
+      </div>
+
+      <div class="endpoint-card">
+        <div class="endpoint-method post">POST</div>
+        <h4>/api/process.php</h4>
+        <p>Procesa UNA escena: recibe WebM, aplica chroma, devuelve MP4.</p>
+        <pre><code>POST /api/process.php
 Content-Type: multipart/form-data
 
 Fields:
-  video:        File WebM grabado
-  chroma_color: #00ff00 (hex)
-  tolerance:    40 (0-120)
-  bg_color:     #003D7A (hex, opcional)
-  title:        "Promo Afore Q4"
-  brand:        "afore" | "bancoppel" | "ambas"
+  session_id: sess_xxx
+  numero_escena: 1
+  video: File (WebM)
 
-Response:
-  { ok: true, session_id, frames, duration, output_url }</code></pre>
+Response: { ok, scene_id, frames, duration, output_url }</code></pre>
+      </div>
+
+      <div class="endpoint-card">
+        <div class="endpoint-method post">POST</div>
+        <h4>/api/process_batch.php</h4>
+        <p>Procesa TODAS las escenas pendientes de una sesión en una sola llamada.</p>
+        <pre><code>POST /api/process_batch.php
+Content-Type: application/json
+
+{ "session_id": "sess_xxx" }
+
+Response: {
+  ok: true,
+  processed: [ { escena: 1, ok: true, output_url }, ... ],
+  pending: 0
+}</code></pre>
+      </div>
+
+      <div class="endpoint-card">
+        <div class="endpoint-method post">POST</div>
+        <h4>/api/concat.php</h4>
+        <p>Une todas las escenas procesadas en un solo MP4 final.</p>
+        <pre><code>POST /api/concat.php
+Content-Type: application/json
+
+{ "session_id": "sess_xxx" }
+
+Response: { ok, final_url, duration, scenes_count }</code></pre>
+      </div>
+
+      <div class="endpoint-card">
+        <div class="endpoint-method get">GET</div>
+        <h4>/api/download.php?id=...</h4>
+        <p>Descarga MP4 procesado de una escena o video final concatenado.</p>
+      </div>
+
+      <div class="endpoint-card">
+        <div class="endpoint-method delete">DELETE</div>
+        <h4>/api/sessions.php?id=...</h4>
+        <p>Elimina una sesión completa (con todas sus escenas y archivos).</p>
+      </div>
     </div>
 
     <div class="api-card">
       <h4>🛠️ Stack del backend</h4>
       <ul class="api-list">
-        <li><strong>PHP 8+</strong> con GD para manipulación pixel a pixel</li>
-        <li><strong>FFmpeg</strong> para extracción de frames y reencoding</li>
-        <li><strong>MySQL/SQLite</strong> para sesiones, escenas y resultados</li>
-        <li><strong>Almacenamiento local</strong> en <code>storage/sessions/{id}/</code></li>
+        <li><strong>PHP 8+</strong> con extensión GD para manipulación pixel a pixel</li>
+        <li><strong>FFmpeg</strong> para extracción de frames (24fps) y reencoding H.264</li>
+        <li><strong>SQLite 3</strong> para persistir sesiones y escenas (zero config)</li>
+        <li><strong>Almacenamiento</strong> en filesystem bajo <code>storage/sessions/&lt;id&gt;/</code></li>
+        <li><strong>CORS habilitado</strong> para acceso desde GitHub Pages</li>
       </ul>
-    </div>
-  </div>
-</section>
-
-<!-- ============ GALLERY ============ -->
-<section class="section section-alt" id="gallery">
-  <div class="container">
-    <div class="section-head">
-      <span class="section-tag">SESIONES GRABADAS</span>
-      <h2 class="section-title">Galería de <span class="gradient-text">producciones</span></h2>
-      <p class="section-sub">Lista de videos ya procesados por el backend PHP.</p>
-    </div>
-
-    <div id="gallery-grid" class="gallery-grid">
-      <div class="gallery-empty">Cargando galería...</div>
     </div>
   </div>
 </section>
@@ -356,14 +363,14 @@ Response:
             <span class="brand-tag">by AGUITECH</span>
           </div>
         </div>
-        <p class="footer-desc">Herramienta interna para producción de videos BanCoppel & Afore Coppel.</p>
+        <p class="footer-desc">Herramienta interna para producción de videos BanCoppel & Afore Coppel. Multi-escena, chroma key automático, todo guardado en PHP.</p>
       </div>
       <div>
         <h5>Stack</h5>
         <span class="footer-item">HTML5 + CSS3 + Vanilla JS</span>
         <span class="footer-item">MediaRecorder API</span>
         <span class="footer-item">PHP 8 + GD + FFmpeg</span>
-        <span class="footer-item">MySQL / SQLite</span>
+        <span class="footer-item">SQLite (zero config)</span>
       </div>
       <div>
         <h5>Construido por</h5>
