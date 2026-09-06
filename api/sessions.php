@@ -97,22 +97,31 @@ if ($method === 'GET') {
         $stmt->execute([$id]);
         $scenes = $stmt->fetchAll();
 
-        // Enriquecer con output_url
+        // Enriquecer con output_url y chroma_hits
         foreach ($scenes as &$sc) {
             $sc['output_url'] = $sc['output_path']
                 ? "https://api.aguitech.com.mx/teleprompter-video/api/download.php?session={$id}&scene={$sc['numero']}"
                 : null;
+            $sc['frames'] = (int)($sc['frames'] ?? 0);
+            $sc['duration'] = (float)($sc['duration'] ?? 0);
+            $sc['chroma_hits'] = (int)($sc['chroma_hits'] ?? 0);
+            $sc['output_size'] = (int)($sc['output_size'] ?? 0);
         }
         $session['scenes'] = $scenes;
         $session['scenes_processed'] = count(array_filter($scenes, fn($s) => $s['status'] === 'processed'));
+        $session['total_chroma_hits'] = array_sum(array_column($scenes, 'chroma_hits'));
+        $session['total_duration'] = array_sum(array_column($scenes, 'duration'));
 
         json_ok(['session' => $session]);
     }
 
-    // Lista de todas las sesiones
+    // Lista de todas las sesiones con agregados enriquecidos
     $stmt = $pdo->query("
         SELECT s.*,
-               (SELECT COUNT(*) FROM escenas WHERE session_id = s.id AND status = 'processed') as scenes_processed
+               (SELECT COUNT(*) FROM escenas WHERE session_id = s.id AND status = 'processed') as scenes_processed,
+               (SELECT COALESCE(SUM(duration), 0) FROM escenas WHERE session_id = s.id AND status = 'processed') as total_duration,
+               (SELECT COALESCE(SUM(frames), 0) FROM escenas WHERE session_id = s.id AND status = 'processed') as total_frames,
+               (SELECT COALESCE(SUM(chroma_hits), 0) FROM escenas WHERE session_id = s.id AND status = 'processed') as total_chroma_hits
         FROM sesiones s
         ORDER BY s.created_at DESC
     ");
@@ -120,7 +129,10 @@ if ($method === 'GET') {
     foreach ($sessions as &$s) {
         $s['scenes_count'] = (int)$s['scenes_count'];
         $s['scenes_processed'] = (int)$s['scenes_processed'];
-        $s['duration'] = (float)$s['duration'];
+        $s['total_duration'] = (float)$s['total_duration'];
+        $s['total_frames'] = (int)$s['total_frames'];
+        $s['total_chroma_hits'] = (int)$s['total_chroma_hits'];
+        $s['duration'] = (float)$s['total_duration'];
     }
     json_ok(['sessions' => $sessions]);
 }

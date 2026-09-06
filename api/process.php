@@ -93,7 +93,7 @@ if (!file_exists(FFMPEG_BIN)) {
 
 $extract_ext = $bg_mode === 'transparent' ? 'png' : 'jpg';
 $extract_cmd = sprintf(
-    '%s -i %s -vf fps=24 %s/frame_%%05d.%s 2>&1',
+    '%s -i %s -vf "fps=24,format=rgb24" %s/frame_%%05d.%s 2>&1',
     escapeshellarg(FFMPEG_BIN),
     escapeshellarg($input_path),
     escapeshellarg($frames_dir),
@@ -219,10 +219,10 @@ $relative_output = 'storage/sessions/' . $session_id . '/escena_' . str_pad($num
 // ============== UPDATE BD ==============
 $stmt = $pdo->prepare("
     UPDATE escenas
-    SET output_path = ?, frames = ?, duration = ?, output_size = ?, status = 'processed', processed_at = CURRENT_TIMESTAMP
+    SET output_path = ?, frames = ?, duration = ?, output_size = ?, chroma_hits = ?, status = 'processed', processed_at = CURRENT_TIMESTAMP
     WHERE session_id = ? AND numero = ?
 ");
-$stmt->execute([$relative_output, $processed_count, $duration, $output_size, $session_id, $numero]);
+$stmt->execute([$relative_output, $processed_count, $duration, $output_size, $chroma_hits, $session_id, $numero]);
 
 // Update sesión duration total
 $pdo->prepare("

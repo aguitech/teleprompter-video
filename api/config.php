@@ -89,6 +89,8 @@ function db() {
                 frames INTEGER DEFAULT 0,
                 duration REAL DEFAULT 0,
                 output_size INTEGER DEFAULT 0,
+                chroma_hits INTEGER DEFAULT 0,
+                bg_replaced INTEGER DEFAULT 0,
                 status TEXT DEFAULT 'draft',
                 error_msg TEXT,
                 created_at TEXT DEFAULT CURRENT_TIMESTAMP,

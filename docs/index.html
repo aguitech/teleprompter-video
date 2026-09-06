@@ -3,14 +3,21 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Teleprompter Video · BanCoppel & Afore Coppel</title>
-<meta name="description" content="Graba N escenas con teleprompter, greenscreen y post-producción automática con chroma key en PHP.">
+<title>Teleprompter Video · BanCoppel & Afore Coppel · Multi-Escena con Chroma</title>
+<meta name="description" content="Graba N escenas con teleprompter, greenscreen y post-producción automática con chroma key en PHP. Backend standalone.">
+<meta name="theme-color" content="#0066ff">
+<meta property="og:title" content="Teleprompter Video · BanCoppel & Afore Coppel">
+<meta property="og:description" content="Sistema multi-escena teleprompter con chroma key automático en PHP + FFmpeg">
+<meta property="og:type" content="website">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="assets/style.css">
 </head>
 <body>
+
+<!-- ============ TOAST CONTAINER ============ -->
+<div id="toast-container" class="toast-container"></div>
 
 <!-- ============ NAV ============ -->
 <nav class="nav">
@@ -19,13 +26,14 @@
       <div class="brand-mark">BC</div>
       <div class="brand-text">
         <span class="brand-name">Teleprompter Video</span>
-        <span class="brand-tag">BanCoppel · Afore Coppel</span>
+        <span class="brand-tag">BanCoppel · Afore Coppel · AGUITECH</span>
       </div>
     </a>
     <ul class="nav-menu">
       <li><a href="#step1">① Producción</a></li>
       <li><a href="#step2">② Galería</a></li>
       <li><a href="#step3">③ API</a></li>
+      <li><a href="#step4">④ Stack</a></li>
     </ul>
   </div>
 </nav>
@@ -35,21 +43,31 @@
   <div class="container">
     <div class="hero-pill">
       <span class="pulse"></span>
-      HERRAMIENTA INTERNA · BANCOPPEL & AFORE COPPEL
+      HERRAMIENTA INTERNA · BANCOPPEL & AFORE COPPEL · PRODUCCIÓN MULTI-ESCENA
     </div>
     <h1 class="hero-title">
-      Graba <span class="gradient-text">N escenas</span> con teleprompter,
+      Graba <span class="gradient-text">N escenas</span> con teleprompter,<br>
       greenscreen y chroma key automático
     </h1>
     <p class="hero-subtitle">
-      De 1 a 9+ textos independientes. Cada uno graba su clip, se procesa con PHP+FFmpeg+GD,
-      y todo queda guardado en una sesión lista para descarga.
+      De <strong style="color:var(--afore-green)">1 a 9+ textos</strong> independientes. Cada uno graba su clip, se procesa con
+      <strong style="color:var(--bancoppel-cyan)">PHP+FFmpeg+GD</strong>, y todo queda guardado en una sesión lista para descarga.
     </p>
 
+    <!-- Brand tags -->
+    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:32px;">
+      <span class="scene-mini" data-status="done" style="width:auto;padding:6px 12px;font-size:11px;">🏦 BanCoppel azul</span>
+      <span class="scene-mini" data-status="done" style="background:linear-gradient(135deg,var(--afore-green),var(--afore-mint));color:#002a18;width:auto;padding:6px 12px;font-size:11px;">💚 Afore verde</span>
+      <span class="scene-mini" data-status="processing" style="width:auto;padding:6px 12px;font-size:11px;">🎨 Chroma Key</span>
+      <span class="scene-mini" data-status="draft" style="width:auto;padding:6px 12px;font-size:11px;">📝 N guiones</span>
+      <span class="scene-mini" data-status="recording" style="width:auto;padding:6px 12px;font-size:11px;">🎬 MediaRecorder</span>
+    </div>
+
+    <!-- Flow steps -->
     <div class="flow">
       <div class="flow-step">
         <div class="flow-num">1</div>
-        <div class="flow-label">Crear sesión<br>+ N guiones</div>
+        <div class="flow-label">Configurar sesión<br>+ N guiones</div>
       </div>
       <div class="flow-arrow">→</div>
       <div class="flow-step">
@@ -59,12 +77,12 @@
       <div class="flow-arrow">→</div>
       <div class="flow-step">
         <div class="flow-num">3</div>
-        <div class="flow-label">Procesar batch<br>PHP+FFmpeg</div>
+        <div class="flow-label">Procesar batch<br>PHP+FFmpeg+GD</div>
       </div>
       <div class="flow-arrow">→</div>
       <div class="flow-step">
         <div class="flow-num">4</div>
-        <div class="flow-label">Descargar<br>MP4 por escena</div>
+        <div class="flow-label">Descargar N MP4s<br>+ concat final</div>
       </div>
     </div>
   </div>
@@ -73,6 +91,11 @@
 <!-- ============ STEP 1: PRODUCCIÓN ============ -->
 <section class="section" id="step1">
   <div class="container">
+    <div class="section-head">
+      <span class="section-tag">PASO 01</span>
+      <h2 class="section-title">Estudio de <span class="gradient-text">producción</span></h2>
+      <p class="section-sub">Crea una sesión, escribe N guiones, graba cada clip con countdown y procesa con chroma key automático.</p>
+    </div>
 
     <!-- ============== SESSION HEADER ============== -->
     <div class="session-bar">
@@ -89,19 +112,19 @@
     <div class="session-config">
       <div class="form-row">
         <div>
-          <label>Título de la sesión</label>
+          <label>📌 Título de la sesión</label>
           <input type="text" id="session-title" placeholder="Ej: Promo Afore Q4 2026" value="Promo Afore Coppel Q4">
         </div>
         <div>
-          <label>Marca</label>
+          <label>🎨 Marca</label>
           <select id="session-brand">
-            <option value="bancoppel">BanCoppel</option>
-            <option value="afore">Afore Coppel</option>
-            <option value="ambas">Ambas (mixto)</option>
+            <option value="bancoppel">🏦 BanCoppel</option>
+            <option value="afore">💚 Afore Coppel</option>
+            <option value="ambas">🔄 Ambas (mixto)</option>
           </select>
         </div>
         <div>
-          <label>Número de escenas</label>
+          <label>🎬 Número de escenas</label>
           <input type="number" id="scene-count" min="1" max="20" value="3">
         </div>
       </div>
@@ -114,11 +137,11 @@
           <input type="range" id="global-tolerance" min="10" max="180" value="80" class="tolerance-slider">
           <label class="inline-label">Fondo</label>
           <select id="global-bg-mode">
-            <option value="transparent">Transparente</option>
-            <option value="bancoppel">BanCoppel azul</option>
-            <option value="afore">Afore verde</option>
-            <option value="custom">Custom</option>
-            <option value="none">Sin reemplazar</option>
+            <option value="transparent">🪟 Transparente</option>
+            <option value="bancoppel">🏦 BanCoppel azul</option>
+            <option value="afore">💚 Afore verde</option>
+            <option value="custom">🎨 Custom</option>
+            <option value="none">⛔ Sin reemplazar</option>
           </select>
           <input type="color" id="global-bg-color" value="#003D7A" style="display:none;">
         </div>
@@ -227,11 +250,11 @@
     <div class="section-head">
       <span class="section-tag">PASO 02</span>
       <h2 class="section-title">Galería de <span class="gradient-text">producciones</span></h2>
-      <p class="section-sub">Sesiones guardadas en el backend PHP. Cada sesión contiene N escenas procesadas.</p>
+      <p class="section-sub">Sesiones guardadas en el backend PHP. Cada sesión contiene N escenas procesadas con MP4 descargable.</p>
     </div>
 
     <div class="gallery-controls">
-      <button id="btn-gallery-refresh" class="btn-secondary small">🔄 Refrescar</button>
+      <button id="btn-gallery-refresh" class="btn-secondary small">🔄 Refrescar galería</button>
       <span id="gallery-count">— sesiones</span>
     </div>
 
@@ -247,19 +270,19 @@
     <div class="section-head">
       <span class="section-tag">PASO 03</span>
       <h2 class="section-title">API del <span class="gradient-text">backend PHP</span></h2>
-      <p class="section-sub">Backend standalone con SQLite. Procesa cada escena con FFmpeg+GD y devuelve MP4.</p>
+      <p class="section-sub">Backend standalone con SQLite. Procesa cada escena con FFmpeg+GD y devuelve MP4 con chroma aplicado.</p>
     </div>
 
     <div class="endpoints-grid">
       <div class="endpoint-card">
         <div class="endpoint-method post">POST</div>
         <h4>/api/sessions.php</h4>
-        <p>Crea o actualiza una sesión con N guiones.</p>
+        <p>Crea o actualiza una sesión con N guiones. Retorna session_id.</p>
         <pre><code>POST /api/sessions.php
 Content-Type: application/json
 
 {
-  "id": "opcional (regenera)",
+  "id": "opcional",
   "title": "Promo Q4",
   "brand": "afore",
   "chroma_color": "#00ff00",
@@ -275,11 +298,12 @@ Content-Type: application/json
       <div class="endpoint-card">
         <div class="endpoint-method get">GET</div>
         <h4>/api/sessions.php</h4>
-        <p>Lista todas las sesiones o una específica con sus escenas.</p>
+        <p>Lista todas las sesiones, o detalle con escenas si pasas <code>?id=X</code>.</p>
         <pre><code>GET /api/sessions.php
 GET /api/sessions.php?id=sess_xxx
 
-Response: { sessions: [...] }</code></pre>
+Response: { ok, sessions: [...] }
+         o { ok, session: {...}, scenes: [...] }</code></pre>
       </div>
 
       <div class="endpoint-card">
@@ -294,59 +318,123 @@ Fields:
   numero_escena: 1
   video: File (WebM)
 
-Response: { ok, scene_id, frames, duration, output_url }</code></pre>
-      </div>
-
-      <div class="endpoint-card">
-        <div class="endpoint-method post">POST</div>
-        <h4>/api/process_batch.php</h4>
-        <p>Procesa TODAS las escenas pendientes de una sesión en una sola llamada.</p>
-        <pre><code>POST /api/process_batch.php
-Content-Type: application/json
-
-{ "session_id": "sess_xxx" }
-
 Response: {
-  ok: true,
-  processed: [ { escena: 1, ok: true, output_url }, ... ],
-  pending: 0
+  ok, scene_id, frames, duration,
+  chroma_hits, output_url
 }</code></pre>
       </div>
 
       <div class="endpoint-card">
         <div class="endpoint-method post">POST</div>
         <h4>/api/concat.php</h4>
-        <p>Une todas las escenas procesadas en un solo MP4 final.</p>
+        <p>Une todas las escenas procesadas en un MP4 final.</p>
         <pre><code>POST /api/concat.php
 Content-Type: application/json
 
 { "session_id": "sess_xxx" }
 
-Response: { ok, final_url, duration, scenes_count }</code></pre>
+Response: {
+  ok, final_url,
+  duration, scenes_count
+}</code></pre>
       </div>
 
       <div class="endpoint-card">
         <div class="endpoint-method get">GET</div>
-        <h4>/api/download.php?id=...</h4>
+        <h4>/api/download.php</h4>
         <p>Descarga MP4 procesado de una escena o video final concatenado.</p>
+        <pre><code>GET /api/download.php?session=X&scene=N
+GET /api/download.php?session=X&final=1
+
+→ video/mp4 stream</code></pre>
+      </div>
+
+      <div class="endpoint-card">
+        <div class="endpoint-method get">GET</div>
+        <h4>/api/frames.php</h4>
+        <p>Lista frames PNG/JPG extraídos de una escena (debug).</p>
+        <pre><code>GET /api/frames.php?session=X&scene=N
+
+Response: {
+  ok, frames: [
+    "frames_001.jpg",
+    "frames_002.jpg",
+    ...
+  ]
+}</code></pre>
       </div>
 
       <div class="endpoint-card">
         <div class="endpoint-method delete">DELETE</div>
         <h4>/api/sessions.php?id=...</h4>
-        <p>Elimina una sesión completa (con todas sus escenas y archivos).</p>
+        <p>Elimina una sesión completa (BD + filesystem).</p>
+        <pre><code>DELETE /api/sessions.php?id=sess_xxx
+
+Response: { ok, deleted: "sess_xxx" }</code></pre>
       </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ STEP 4: STACK ============ -->
+<section class="section section-alt" id="step4">
+  <div class="container">
+    <div class="section-head">
+      <span class="section-tag">PASO 04</span>
+      <h2 class="section-title">Stack <span class="gradient-text">técnico</span></h2>
+      <p class="section-sub">100% código abierto. Sin servicios externos. Backend standalone PHP + SQLite.</p>
     </div>
 
     <div class="api-card">
-      <h4>🛠️ Stack del backend</h4>
+      <h4>🛠️ Componentes del sistema</h4>
       <ul class="api-list">
-        <li><strong>PHP 8+</strong> con extensión GD para manipulación pixel a pixel</li>
-        <li><strong>FFmpeg</strong> para extracción de frames (24fps) y reencoding H.264</li>
-        <li><strong>SQLite 3</strong> para persistir sesiones y escenas (zero config)</li>
-        <li><strong>Almacenamiento</strong> en filesystem bajo <code>storage/sessions/&lt;id&gt;/</code></li>
-        <li><strong>CORS habilitado</strong> para acceso desde GitHub Pages</li>
+        <li><strong>Frontend</strong> Vanilla JS + HTML5 · MediaRecorder API · Canvas API</li>
+        <li><strong>Teleprompter</strong> Scroll programático con contador de palabras y velocidad</li>
+        <li><strong>Greenscreen</strong> MediaRecorder con <code>video/webm</code> codec VP8/VP9</li>
+        <li><strong>Backend</strong> PHP 8.3 + extensión GD para manipulación pixel a pixel</li>
+        <li><strong>Frames</strong> FFmpeg extrae 24fps JPEG, GD aplica chroma, PHP recompone</li>
+        <li><strong>Encoding</strong> FFmpeg H.264 + AAC con <code>libx264</code> rápido</li>
+        <li><strong>Persistencia</strong> SQLite 3 (zero config) en <code>storage/db/</code></li>
+        <li><strong>Storage</strong> Filesystem organizado por sesión y escena</li>
+        <li><strong>CORS</strong> Habilitado para acceso desde GitHub Pages</li>
+        <li><strong>Deploy</strong> Frontend en GitHub Pages · Backend en servidor PHP</li>
       </ul>
+    </div>
+
+    <div style="margin-top:32px;display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:18px;">
+      <div class="endpoint-card">
+        <h4 style="color:var(--bancoppel-cyan);">📐 Chroma key</h4>
+        <p style="font-size:13px;color:var(--text-2);">Algoritmo de distancia euclidiana en espacio RGB. Cada pixel se compara con el color clave; si la distancia es menor que la tolerancia, se reemplaza por el fondo seleccionado (transparente, color sólido, o sin reemplazo).</p>
+        <pre><code>dist = sqrt((r-kr)² + (g-kg)² + (b-kb)²)
+if dist < tolerance: pixel = bg</code></pre>
+      </div>
+
+      <div class="endpoint-card">
+        <h4 style="color:var(--afore-green);">🎬 FFmpeg pipeline</h4>
+        <p style="font-size:13px;color:var(--text-2);">Pipeline de 3 pasos: extract → process → encode. Mantiene calidad y resolución original del video grabado.</p>
+        <pre><code>1. ffmpeg -i input.webm -q:v 2 frames/%04d.jpg
+2. GD: chroma key por pixel
+3. ffmpeg -framerate 24 -i processed/%04d.jpg
+   -c:v libx264 -pix_fmt yuv420p output.mp4</code></pre>
+      </div>
+
+      <div class="endpoint-card">
+        <h4 style="color:var(--accent-purple);">🗄️ SQLite schema</h4>
+        <p style="font-size:13px;color:var(--text-2);">Dos tablas: sesiones (metadata) y escenas (texto + status). Cada escena referencia su sesión con foreign key.</p>
+        <pre><code>CREATE TABLE sesiones (
+  id TEXT PRIMARY KEY,
+  title TEXT, brand TEXT,
+  chroma_color TEXT, tolerance INT,
+  bg_mode TEXT, created_at TEXT
+);
+CREATE TABLE escenas (
+  id INTEGER PRIMARY KEY,
+  session_id TEXT,
+  numero INT, texto TEXT,
+  status TEXT, frames INT,
+  duration REAL, output_url TEXT
+);</code></pre>
+      </div>
     </div>
   </div>
 </section>
@@ -360,26 +448,36 @@ Response: { ok, final_url, duration, scenes_count }</code></pre>
           <div class="brand-mark">BC</div>
           <div class="brand-text">
             <span class="brand-name">Teleprompter Video</span>
-            <span class="brand-tag">by AGUITECH</span>
+            <span class="brand-tag">by AGUITECH · Héctor Aguilar</span>
           </div>
         </div>
-        <p class="footer-desc">Herramienta interna para producción de videos BanCoppel & Afore Coppel. Multi-escena, chroma key automático, todo guardado en PHP.</p>
+        <p class="footer-desc">Herramienta interna para producción de videos BanCoppel & Afore Coppel. Multi-escena con chroma key automático, todo procesado en PHP standalone.</p>
+        <div style="margin-top:14px;display:flex;gap:8px;">
+          <span class="scene-mini" data-status="done" style="width:auto;padding:5px 10px;font-size:10px;">v2.0 multi-escena</span>
+          <span class="scene-mini" data-status="processing" style="width:auto;padding:5px 10px;font-size:10px;">chroma key</span>
+          <span class="scene-mini" data-status="recording" style="width:auto;padding:5px 10px;font-size:10px;">live</span>
+        </div>
       </div>
       <div>
         <h5>Stack</h5>
-        <span class="footer-item">HTML5 + CSS3 + Vanilla JS</span>
-        <span class="footer-item">MediaRecorder API</span>
-        <span class="footer-item">PHP 8 + GD + FFmpeg</span>
-        <span class="footer-item">SQLite (zero config)</span>
+        <span class="footer-item">🏦 BanCoppel azul</span>
+        <span class="footer-item">💚 Afore verde</span>
+        <span class="footer-item">📝 N guiones</span>
+        <span class="footer-item">🎬 MediaRecorder</span>
+        <span class="footer-item">🐘 PHP 8 + GD</span>
+        <span class="footer-item">🎞️ FFmpeg H.264</span>
+        <span class="footer-item">🗄️ SQLite</span>
       </div>
       <div>
         <h5>Construido por</h5>
-        <a href="https://github.com/aguitech" target="_blank" class="footer-item">github.com/aguitech</a>
-        <a href="https://aguitech.com.mx" target="_blank" class="footer-item">aguitech.com.mx</a>
+        <a href="https://github.com/aguitech" target="_blank" class="footer-item">🐙 github.com/aguitech</a>
+        <a href="https://aguitech.com.mx" target="_blank" class="footer-item">🌐 aguitech.com.mx</a>
+        <a href="https://github.com/aguitech/teleprompter-video" target="_blank" class="footer-item">📦 Repo teleprompter-video</a>
+        <a href="https://aguitech.github.io/teleprompter-video/" target="_blank" class="footer-item">🚀 GitHub Pages</a>
       </div>
     </div>
     <div class="footer-bottom">
-      <p>© 2026 BanCoppel · Afore Coppel · Built by AGUITECH · Héctor Aguilar</p>
+      <p>© 2026 BanCoppel · Afore Coppel · Built by AGUITECH · Héctor Aguilar · Multi-escena + chroma key + PHP+FFmpeg</p>
     </div>
   </div>
 </footer>

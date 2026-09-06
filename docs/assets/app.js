@@ -1,11 +1,13 @@
 /* ==============================================================
    BanCoppel + Afore Coppel — Multi-Escena Teleprompter + Recorder
+   Premium UI · Toast system · Enhanced gallery
+   by AGUITECH · 2026
    ============================================================== */
 
 (function () {
   'use strict';
 
-  // ============ STATE GLOBAL ============
+  // ============ CONFIG ============
   const API_BASE = 'https://api.aguitech.com.mx/teleprompter-video/api';
 
   const state = {
@@ -16,14 +18,14 @@
     tolerance: 80,
     bgMode: 'transparent',
     bgColor: '#003D7A',
-    scenes: [],  // [{numero, texto, status, blobUrl, outputUrl, etc}]
+    scenes: [],
   };
 
   const SCENE_STATUS = {
-    EMPTY: 'empty',       // sin texto
-    DRAFT: 'draft',       // con texto pero sin grabar
+    EMPTY: 'empty',
+    DRAFT: 'draft',
     RECORDING: 'recording',
-    RECORDED: 'recorded', // grabado, sin subir
+    RECORDED: 'recorded',
     UPLOADING: 'uploading',
     PROCESSING: 'processing',
     PROCESSED: 'processed',
@@ -41,11 +43,43 @@
     error: '✗ Error',
   };
 
-  const TEMPLATES = {
-    bancoppel: '¡Bienvenido a BanCoppel! Tu banco de confianza, cerca de ti. Estamos en cada rincón de México para ofrecerte soluciones financieras accesibles. Con BanCoppel, tus ahorros están seguros y tus sueños más cerca. Gracias por confiar en nosotros.',
-    afore: 'Afore Coppel: construye tu futuro hoy. ¿Sabías que el 65% de los mexicanos no tiene un plan de retiro? En Afore Coppel te ayudamos a construir el futuro que mereces. Pequeñas contribuciones hoy se convierten en tranquilidad mañana. Tu retiro, nuestra prioridad.',
-    promo: '¡Promoción especial de temporada! Afore Coppel te ofrece bonificación en tus primeros 6 meses al abrir tu cuenta de ahorro para el retiro. Además, BanCoppel te regala una cuenta de ahorro sin comisiones al contratar tu plan de retiro. No dejes pasar esta oportunidad.',
+  const STATUS_ICONS = {
+    empty: '○',
+    draft: '✎',
+    recording: '●',
+    recorded: '◉',
+    uploading: '↑',
+    processing: '⚙',
+    processed: '✓',
+    error: '✕',
   };
+
+  const BRAND_LABELS = {
+    bancoppel: '🏦 BanCoppel',
+    afore: '💚 Afore Coppel',
+    ambas: '🔄 Mixto',
+  };
+
+  const BRAND_COLORS = {
+    bancoppel: 'var(--bancoppel-blue)',
+    afore: 'var(--afore-green)',
+    ambas: 'var(--accent-purple)',
+  };
+
+  // ============ TOAST SYSTEM ============
+  function toast(msg, type = 'info', duration = 4000) {
+    const container = document.getElementById('toast-container');
+    if (!container) return;
+    const el = document.createElement('div');
+    el.className = `toast ${type}`;
+    const icon = type === 'success' ? '✓' : type === 'error' ? '✕' : 'ℹ';
+    el.innerHTML = `<span style="font-size:16px;font-weight:700;">${icon}</span><span>${escapeHtml(msg)}</span>`;
+    container.appendChild(el);
+    setTimeout(() => {
+      el.style.animation = 'toastIn 0.3s reverse';
+      setTimeout(() => el.remove(), 300);
+    }, duration);
+  }
 
   // ============ DOM ============
   const $ = id => document.getElementById(id);
@@ -78,9 +112,12 @@
 
   // ============ SCENE MANAGEMENT ============
   function generateScenes(count) {
+    const existingByNum = {};
+    state.scenes.forEach(s => { existingByNum[s.numero] = s; });
+
     state.scenes = [];
     for (let i = 1; i <= count; i++) {
-      const existing = state.scenes[i - 1];
+      const existing = existingByNum[i];
       state.scenes.push({
         numero: i,
         texto: existing?.texto || '',
@@ -92,10 +129,11 @@
         blobUrl: null,
         outputUrl: null,
         sceneId: existing?.sceneId || null,
+        frames: existing?.frames || 0,
+        duration: existing?.duration || 0,
+        chromaHits: existing?.chromaHits || 0,
         timerInterval: null,
         startTime: 0,
-        tpSpeed: 30,
-        tpSize: 36,
       });
     }
     renderScenes();
@@ -115,24 +153,20 @@
   }
 
   function updateSceneCard(cardEl, scene) {
-    // Number
     cardEl.querySelector('.scene-num').textContent = scene.numero;
-    // Status badge
     const statusEl = cardEl.querySelector('.scene-status');
     statusEl.dataset.status = scene.status;
     statusEl.querySelector('.status-text').textContent = STATUS_LABELS[scene.status];
-    // Card border based on status
     cardEl.dataset.status = scene.status;
-    // Textarea
+
     const textEl = cardEl.querySelector('.scene-text');
     if (textEl.value !== scene.texto) textEl.value = scene.texto || '';
-    // Stats
+
     const words = (scene.texto || '').trim().split(/\s+/).filter(Boolean).length;
     const chars = (scene.texto || '').length;
     cardEl.querySelector('.scene-words').textContent = `${words} palabras`;
     cardEl.querySelector('.scene-chars').textContent = `${chars} chars`;
 
-    // Output MP4
     const outputEl = cardEl.querySelector('.scene-output');
     const playbackEl = cardEl.querySelector('.scene-playback');
     const dlMp4 = cardEl.querySelector('.btn-download-mp4');
@@ -141,8 +175,17 @@
       outputEl.style.display = 'block';
       playbackEl.src = scene.outputUrl;
       dlMp4.href = scene.outputUrl;
-      dlMp4.setAttribute('download', `${state.sessionId}_scene_${scene.numero}.mp4`);
-      viewFrames.href = `https://api.aguitech.com.mx/teleprompter-video/api/frames.php?session=${state.sessionId}&scene=${scene.numero}`;
+      const ts = Date.now();
+      dlMp4.setAttribute('download', `${state.sessionId || 'session'}_scene_${scene.numero}_${ts}.mp4`);
+      viewFrames.href = `${API_BASE}/frames.php?session=${state.sessionId}&scene=${scene.numero}`;
+      const meta = outputEl.querySelector('.output-meta');
+      if (meta) {
+        meta.innerHTML = `
+          <span>🎞️ ${scene.frames || 0} frames</span>
+          <span>⏱️ ${(scene.duration || 0).toFixed(1)}s</span>
+          <span>🎨 ${(scene.chromaHits || 0).toLocaleString()} px</span>
+        `;
+      }
     } else {
       outputEl.style.display = 'none';
     }
@@ -164,13 +207,19 @@
     dom.masterSessionId.textContent = state.sessionId || '—';
     dom.masterScenesCount.textContent = state.scenes.length;
     const recorded = state.scenes.filter(s => s.blob).length;
-    dom.masterRecordedCount.textContent = recorded;
+    const processed = state.scenes.filter(s => s.outputUrl).length;
+    dom.masterRecordedCount.textContent = `${recorded} grabadas / ${processed} procesadas`;
     dom.btnProcessAll.disabled = !state.sessionId || recorded === 0;
+
+    // Brand badge color
+    if (state.brand && dom.sessionIdBadge) {
+      dom.sessionIdBadge.style.borderColor = BRAND_COLORS[state.brand];
+      dom.sessionIdBadge.style.color = BRAND_COLORS[state.brand];
+    }
   }
 
   // ============ SCENE EVENTS ============
   function bindSceneEvents(cardEl, scene) {
-    // Texto
     const textEl = cardEl.querySelector('.scene-text');
     textEl.addEventListener('input', () => {
       scene.texto = textEl.value;
@@ -179,50 +228,41 @@
       updateSceneCard(cardEl, scene);
     });
 
-    // Collapse
     cardEl.querySelector('.scene-collapse').addEventListener('click', () => {
       cardEl.classList.toggle('collapsed');
     });
 
-    // Preview / TP play (simple — abrir dialog con el texto)
     cardEl.querySelector('.btn-preview').addEventListener('click', () => {
-      if (!scene.texto) { alert('Escribe el texto primero'); return; }
+      if (!scene.texto) { toast('Escribe el texto primero', 'error'); return; }
       openTpPreview(scene);
     });
     cardEl.querySelector('.btn-tp-play').addEventListener('click', () => {
-      if (!scene.texto) { alert('Escribe el texto primero'); return; }
+      if (!scene.texto) { toast('Escribe el texto primero', 'error'); return; }
       openTpPreview(scene);
     });
 
-    // Record
     cardEl.querySelector('.btn-record').addEventListener('click', () => startRecording(scene));
     cardEl.querySelector('.btn-stop').addEventListener('click', () => stopRecording(scene));
-
-    // Upload
     cardEl.querySelector('.btn-upload').addEventListener('click', () => uploadScene(scene));
   }
 
   // ============ TELEPROMPTER PREVIEW (modal) ============
   function openTpPreview(scene) {
     const modal = document.createElement('div');
-    modal.className = 'tp-modal';
-    modal.style.cssText = `
-      position: fixed; inset: 0; background: rgba(0,0,0,0.95); z-index: 9999;
-      display: flex; align-items: center; justify-content: center; padding: 2rem;
-    `;
+    modal.className = 'modal';
     modal.innerHTML = `
-      <div style="max-width: 800px; width: 100%; background: #000; border-radius: 12px; overflow: hidden;">
-        <div style="padding: 1rem 1.5rem; background: var(--bg-2); display: flex; justify-content: space-between; align-items: center;">
-          <strong style="color: var(--ac-yellow);">ESCENA ${scene.numero} — Preview</strong>
-          <button id="modal-close" style="background: transparent; border: 1px solid var(--border); color: var(--text); width: 32px; height: 32px; border-radius: 6px; cursor: pointer;">✕</button>
+      <div class="modal-content">
+        <div class="modal-header">
+          <h3>📺 Escena ${scene.numero} · Preview Teleprompter</h3>
+          <button class="modal-close" type="button">✕</button>
         </div>
-        <div id="modal-tp" style="height: 60vh; overflow-y: auto; padding: 50vh 5%; text-align: center; font-size: 2rem; font-weight: 700; line-height: 1.4; color: #fff; scrollbar-width: none;">
-          <p>${escapeHtml(scene.texto).replace(/\n/g, '<br>')}</p>
-          <p style="color: #555; margin-top: 2rem;">— FIN —</p>
-        </div>
-        <div style="padding: 1rem 1.5rem; background: var(--bg-2); display: flex; justify-content: center; gap: 0.5rem;">
-          <button id="modal-play" style="padding: 0.7rem 1.5rem; background: linear-gradient(135deg, var(--bc-blue-light), var(--ac-green)); color: #fff; border: none; border-radius: 6px; cursor: pointer; font-weight: 600;">▶ Reproducir</button>
-          <button id="modal-reset" style="padding: 0.7rem 1.5rem; background: var(--bg); border: 1px solid var(--border); color: var(--text); border-radius: 6px; cursor: pointer;">↻ Reiniciar</button>
+        <div class="modal-body">
+          <div class="tp-fullscreen" id="modal-tp">${escapeHtml(scene.texto).replace(/\n/g, '<br>')}</div>
+          <div style="display:flex;justify-content:center;gap:8px;margin-top:14px;">
+            <button id="modal-play" class="btn-primary">▶ Reproducir</button>
+            <button id="modal-reset" class="btn-secondary">↻ Reiniciar</button>
+            <button id="modal-close2" class="btn-secondary">✕ Cerrar</button>
+          </div>
         </div>
       </div>
     `;
@@ -245,6 +285,7 @@
         if (tpEl.scrollTop >= tpEl.scrollHeight - tpEl.clientHeight) {
           playing = false;
           modal.querySelector('#modal-play').textContent = '▶ Reproducir';
+          toast(`Teleprompter de escena ${scene.numero} terminado`, 'success');
           return;
         }
         rafId = requestAnimationFrame(tick);
@@ -260,18 +301,21 @@
       pause();
       tpEl.scrollTop = 0;
     }
+    function close() {
+      pause();
+      modal.remove();
+    }
 
     modal.querySelector('#modal-play').addEventListener('click', () => playing ? pause() : play());
     modal.querySelector('#modal-reset').addEventListener('click', reset);
-    modal.querySelector('#modal-close').addEventListener('click', () => {
-      pause();
-      modal.remove();
-    });
+    modal.querySelector('#modal-close').addEventListener('click', close);
+    modal.querySelector('#modal-close2').addEventListener('click', close);
+    modal.addEventListener('click', e => { if (e.target === modal) close(); });
   }
 
-  // ============ RECORDING (MediaRecorder) ============
+  // ============ RECORDING ============
   async function startRecording(scene) {
-    if (!scene.texto) { alert('Escribe el texto primero'); return; }
+    if (!scene.texto) { toast('Escribe el texto primero', 'error'); return; }
 
     const cardEl = dom.scenesGrid.querySelector(`[data-scene="${scene.numero}"]`);
     const videoWrap = cardEl.querySelector('.scene-video-wrap');
@@ -281,25 +325,23 @@
     const tpOverlay = cardEl.querySelector('.scene-tp-overlay');
     const tpScroll = cardEl.querySelector('.scene-tp-scroll');
 
-    // Permisos + stream
     try {
       scene.stream = await navigator.mediaDevices.getUserMedia({
         video: { width: { ideal: 1280 }, height: { ideal: 720 } },
         audio: true
       });
     } catch (e) {
-      alert('No se pudo acceder a cámara/mic: ' + e.message);
+      toast('No se pudo acceder a cámara/mic: ' + e.message, 'error', 6000);
       return;
     }
 
     videoEl.srcObject = scene.stream;
     videoWrap.style.display = 'block';
 
-    // Countdown
     let n = 3;
     overlay.textContent = n;
     overlay.classList.add('recording');
-    await new Promise(r => setTimeout(r, 800));
+    await new Promise(r => setTimeout(r, 600));
     const tick = () => {
       n--;
       if (n <= 0) {
@@ -311,6 +353,7 @@
       setTimeout(tick, 1000);
     };
     setTimeout(tick, 200);
+    toast('🎬 Preparando grabación escena ' + scene.numero + '...', 'info');
   }
 
   function startActualRecording(scene, videoEl, overlay, timer, tpOverlay, tpScroll) {
@@ -328,7 +371,7 @@
     try {
       scene.mediaRecorder = new MediaRecorder(scene.stream, mimeType ? { mimeType } : undefined);
     } catch (e) {
-      alert('MediaRecorder error: ' + e.message);
+      toast('MediaRecorder error: ' + e.message, 'error');
       return;
     }
 
@@ -342,12 +385,8 @@
       scene.blobUrl = URL.createObjectURL(blob);
       scene.status = SCENE_STATUS.RECORDED;
 
-      // Stop tracks
-      if (scene.stream) {
-        scene.stream.getTracks().forEach(t => t.stop());
-      }
+      if (scene.stream) scene.stream.getTracks().forEach(t => t.stop());
 
-      // Show download link for WebM
       videoEl.srcObject = null;
       videoEl.src = scene.blobUrl;
       videoEl.controls = true;
@@ -355,6 +394,7 @@
 
       updateAllSceneCards();
       updateMaster();
+      toast(`✓ Escena ${scene.numero} grabada · ${(blob.size / 1024).toFixed(0)}KB`, 'success');
     };
 
     scene.mediaRecorder.start();
@@ -363,18 +403,19 @@
     updateAllSceneCards();
     updateMaster();
 
-    // Timer
     timer.style.display = 'block';
     scene.timerInterval = setInterval(() => {
       const s = Math.floor((Date.now() - scene.startTime) / 1000);
       timer.textContent = `${String(Math.floor(s/60)).padStart(2,'0')}:${String(s%60).padStart(2,'0')}`;
     }, 200);
 
-    // Update controls
     const cardEl = dom.scenesGrid.querySelector(`[data-scene="${scene.numero}"]`);
     cardEl.querySelector('.btn-record').disabled = true;
+    cardEl.querySelector('.btn-record').classList.add('recording');
     cardEl.querySelector('.btn-stop').disabled = false;
     cardEl.querySelector('.btn-upload').disabled = true;
+
+    toast(`● Grabando escena ${scene.numero}`, 'info', 2000);
   }
 
   function stopRecording(scene) {
@@ -386,10 +427,10 @@
 
     const cardEl = dom.scenesGrid.querySelector(`[data-scene="${scene.numero}"]`);
     cardEl.querySelector('.btn-record').disabled = false;
+    cardEl.querySelector('.btn-record').classList.remove('recording');
     cardEl.querySelector('.btn-stop').disabled = true;
     cardEl.querySelector('.btn-upload').disabled = false;
 
-    // Hide overlay elements
     cardEl.querySelector('.scene-tp-overlay').style.display = 'none';
     cardEl.querySelector('.scene-overlay').classList.remove('recording');
 
@@ -399,9 +440,9 @@
 
   // ============ UPLOAD ============
   async function uploadScene(scene) {
-    if (!scene.blob) { alert('No hay grabación para subir'); return; }
+    if (!scene.blob) { toast('No hay grabación para subir', 'error'); return; }
     if (!state.sessionId) {
-      alert('Guarda la sesión primero (botón "💾 Guardar sesión")');
+      toast('Guarda la sesión primero (💾 Guardar sesión)', 'error', 5000);
       return;
     }
 
@@ -430,7 +471,7 @@
       const xhr = new XMLHttpRequest();
       xhr.upload.onprogress = e => {
         if (e.lengthComputable) {
-          const pct = Math.round(e.loaded / e.total * 50); // upload = 50% del proceso
+          const pct = Math.round(e.loaded / e.total * 50);
           progressFill.style.width = pct + '%';
           progressFill.textContent = pct + '%';
         }
@@ -441,28 +482,35 @@
           if (data.ok) {
             progressFill.style.width = '100%';
             progressFill.textContent = '✓';
-            progressStatus.textContent = `✓ Procesado · ${data.frames} frames · ${data.duration}s`;
+            progressStatus.textContent = `✓ Procesado · ${data.frames} frames · ${data.duration.toFixed(1)}s · ${data.chroma_hits.toLocaleString()} px chroma`;
             scene.status = SCENE_STATUS.PROCESSED;
             scene.outputUrl = data.output_url;
             scene.sceneId = data.scene_id;
+            scene.frames = data.frames;
+            scene.duration = data.duration;
+            scene.chromaHits = data.chroma_hits;
             updateAllSceneCards();
             updateMaster();
+            toast(`✓ Escena ${scene.numero} procesada · ${data.frames} frames`, 'success');
             resolve(data);
           } else {
             progressStatus.textContent = '✗ ' + data.error;
             scene.status = SCENE_STATUS.ERROR;
             updateAllSceneCards();
+            toast('✗ Error: ' + data.error, 'error');
           }
         } catch (e) {
           progressStatus.textContent = '✗ Respuesta inválida';
           scene.status = SCENE_STATUS.ERROR;
           updateAllSceneCards();
+          toast('✗ Respuesta inválida del servidor', 'error');
         }
       };
       xhr.onerror = () => {
         progressStatus.textContent = '✗ Error de red';
         scene.status = SCENE_STATUS.ERROR;
         updateAllSceneCards();
+        toast('✗ Error de red al subir escena ' + scene.numero, 'error');
       };
       xhr.open('POST', `${API_BASE}/process.php`);
       xhr.send(formData);
@@ -472,29 +520,41 @@
   // ============ BATCH PROCESS ============
   async function processAll() {
     const pending = state.scenes.filter(s => s.blob && s.status !== SCENE_STATUS.PROCESSED);
-    if (!pending.length) return;
+    if (!pending.length) {
+      toast('No hay escenas pendientes de procesar', 'info');
+      return;
+    }
 
     setProcessStatus(`⏳ Procesando ${pending.length} escenas...`, 'processing');
     dom.btnProcessAll.disabled = true;
+    toast(`⚙️ Batch: procesando ${pending.length} escenas con chroma`, 'info');
 
+    let okCount = 0;
     for (let i = 0; i < pending.length; i++) {
       const scene = pending[i];
       setProcessStatus(`⏳ Procesando escena ${i + 1}/${pending.length}...`, 'processing');
       try {
         await uploadScene(scene);
+        okCount++;
       } catch (e) {
         setProcessStatus(`✗ Error en escena ${scene.numero}: ${e.message}`, 'error');
+        toast('✗ Error en escena ' + scene.numero, 'error');
       }
     }
 
-    setProcessStatus(`✓ ${pending.length} escenas procesadas`, 'success');
+    setProcessStatus(`✓ ${okCount}/${pending.length} escenas procesadas`, 'success');
     dom.btnProcessAll.disabled = false;
+    toast(`✓ Batch completo: ${okCount}/${pending.length} procesadas`, okCount === pending.length ? 'success' : 'error');
     loadGallery();
   }
 
   function setProcessStatus(msg, type) {
     dom.btnProcessStatus.textContent = msg;
     dom.btnProcessStatus.className = 'status-line ' + (type || '');
+    if (type === 'success') dom.btnProcessStatus.style.color = 'var(--afore-green)';
+    else if (type === 'error') dom.btnProcessStatus.style.color = 'var(--accent-pink)';
+    else if (type === 'processing') dom.btnProcessStatus.style.color = 'var(--accent-purple)';
+    else dom.btnProcessStatus.style.color = '';
   }
 
   // ============ SESSION MANAGEMENT ============
@@ -506,7 +566,6 @@
     state.bgMode = dom.globalBgMode.value;
     state.bgColor = dom.globalBgColor.value;
 
-    // Update scenes statuses based on texto
     state.scenes.forEach(s => {
       if (s.status === SCENE_STATUS.EMPTY && s.texto) s.status = SCENE_STATUS.DRAFT;
     });
@@ -535,12 +594,15 @@
         updateAllSceneCards();
         updateMaster();
         setProcessStatus(`✓ Sesión guardada · ${data.session.scenes_count} escenas`, 'success');
+        toast(`✓ Sesión "${data.session.title}" guardada en PHP+SQLite`, 'success', 5000);
         loadGallery();
       } else {
         setProcessStatus('✗ ' + data.error, 'error');
+        toast('✗ Error guardando sesión: ' + data.error, 'error');
       }
     } catch (e) {
       setProcessStatus('✗ ' + e.message, 'error');
+      toast('✗ Error de red: ' + e.message, 'error');
     }
   }
 
@@ -555,6 +617,7 @@
     generateScenes(3);
     setProcessStatus('', '');
     updateMaster();
+    toast('🆕 Nueva sesión iniciada', 'info');
   }
 
   // ============ GALLERY ============
@@ -563,7 +626,7 @@
       const r = await fetch(`${API_BASE}/sessions.php`);
       const data = await r.json();
       if (!data.ok) {
-        dom.galleryGrid.innerHTML = '<div class="gallery-empty">Backend no disponible</div>';
+        dom.galleryGrid.innerHTML = '<div class="gallery-empty">Backend no disponible · ejecutándose standalone</div>';
         dom.galleryCount.textContent = '— sesiones';
         return;
       }
@@ -575,36 +638,143 @@
   }
 
   function renderGallery(sessions) {
-    dom.galleryCount.textContent = `${sessions.length} sesiones`;
+    dom.galleryCount.textContent = `${sessions.length} sesión${sessions.length !== 1 ? 'es' : ''}`;
+
     if (!sessions.length) {
-      dom.galleryGrid.innerHTML = '<div class="gallery-empty">No hay sesiones guardadas aún. ¡Crea la primera!</div>';
+      dom.galleryGrid.innerHTML = `
+        <div class="gallery-empty">
+          🎬 No hay sesiones guardadas aún.<br>
+          <span style="font-size:12px;margin-top:8px;display:inline-block;">Crea la primera arriba y se guardará automáticamente.</span>
+        </div>`;
       return;
     }
-    dom.galleryGrid.innerHTML = sessions.map(s => `
-      <div class="gallery-card" data-id="${s.id}">
-        <div class="gallery-thumb">
-          ${s.brand === 'afore' ? '🟢' : s.brand === 'ambas' ? '🟣' : '🔵'}
-          <span class="scenes-pill">${s.scenes_count} escenas</span>
-        </div>
-        <div class="gallery-info">
-          <h4>${escapeHtml(s.title)}</h4>
-          <p><span>${s.brand}</span><span>${new Date(s.created_at).toLocaleDateString()}</span></p>
-          <p><span>${s.scenes_processed}/${s.scenes_count} procesadas</span><span>${(s.duration || 0).toFixed(1)}s</span></p>
-        </div>
-      </div>
-    `).join('');
 
-    // Click → cargar sesión
+    dom.galleryGrid.innerHTML = sessions.map(s => {
+      const brandEmoji = s.brand === 'afore' ? '💚' : s.brand === 'ambas' ? '🔄' : '🏦';
+      const brandLabel = BRAND_LABELS[s.brand] || s.brand;
+      const date = new Date(s.created_at);
+      const dateStr = date.toLocaleDateString('es-MX', { day: '2-digit', month: 'short', year: 'numeric' });
+      const timeStr = date.toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit' });
+      const scenesProcessed = s.scenes_processed || 0;
+      const scenesCount = s.scenes_count || 0;
+      const duration = (s.total_duration || 0).toFixed(1);
+      const totalPixels = s.total_chroma_hits || 0;
+
+      // Generar miniaturas para cada escena (basado en estado)
+      const scenesMini = [];
+      for (let i = 1; i <= scenesCount; i++) {
+        const isProcessed = i <= scenesProcessed;
+        scenesMini.push(`<div class="scene-mini" ${isProcessed ? 'data-status="done"' : 'data-status="draft"'}>${isProcessed ? '✓' : i}</div>`);
+      }
+
+      return `
+        <div class="gallery-card" data-id="${s.id}">
+          <div class="gallery-thumb" style="background: linear-gradient(135deg, ${brandColor(s.brand, 0.3)}, rgba(139, 92, 246, 0.3));">
+            <div class="gallery-thumb-placeholder">${brandEmoji}</div>
+            <div class="gallery-thumb-overlay">
+              <span class="gallery-thumb-badge">${scenesProcessed}/${scenesCount} procesadas</span>
+            </div>
+          </div>
+          <div class="gallery-body">
+            <h3 class="gallery-title">${escapeHtml(s.title)}</h3>
+            <div class="gallery-meta">
+              <span>${brandLabel}</span>
+              <span>${dateStr}</span>
+              <span>${timeStr}</span>
+            </div>
+            <div class="gallery-meta">
+              <span>🎬 ${scenesCount} escenas</span>
+              <span>⏱️ ${duration}s</span>
+              <span>🎨 ${formatNumber(totalPixels)} px</span>
+            </div>
+            <div class="gallery-scenes-strip">
+              ${scenesMini.join('')}
+            </div>
+            <div class="gallery-actions">
+              <button class="btn-primary btn-load-session">📂 Cargar</button>
+              <button class="btn-secondary btn-concat">🔗 Concat</button>
+              <button class="btn-secondary btn-delete-session">🗑️</button>
+            </div>
+          </div>
+        </div>
+      `;
+    }).join('');
+
+    // Bind events
     dom.galleryGrid.querySelectorAll('.gallery-card').forEach(card => {
-      card.addEventListener('click', () => loadSession(card.dataset.id));
+      const id = card.dataset.id;
+      card.querySelector('.btn-load-session').addEventListener('click', e => {
+        e.stopPropagation();
+        loadSession(id);
+      });
+      card.querySelector('.btn-concat').addEventListener('click', e => {
+        e.stopPropagation();
+        concatSession(id);
+      });
+      card.querySelector('.btn-delete-session').addEventListener('click', e => {
+        e.stopPropagation();
+        deleteSession(id);
+      });
     });
+  }
+
+  function brandColor(brand, alpha = 1) {
+    const colors = {
+      bancoppel: [0, 102, 255],
+      afore: [0, 255, 136],
+      ambas: [139, 92, 246],
+    };
+    const [r, g, b] = colors[brand] || [0, 102, 255];
+    return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+  }
+
+  function formatNumber(n) {
+    if (n >= 1e6) return (n / 1e6).toFixed(1) + 'M';
+    if (n >= 1e3) return (n / 1e3).toFixed(1) + 'K';
+    return n.toString();
+  }
+
+  async function concatSession(id) {
+    toast(`🔗 Concatenando ${id}...`, 'info');
+    try {
+      const r = await fetch(`${API_BASE}/concat.php`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ session_id: id }),
+      });
+      const data = await r.json();
+      if (data.ok) {
+        toast(`✓ Concat listo · ${data.scenes_count} escenas · ${data.duration.toFixed(1)}s`, 'success', 6000);
+        window.open(data.final_url, '_blank');
+      } else {
+        toast('✗ Error en concat: ' + data.error, 'error');
+      }
+    } catch (e) {
+      toast('✗ Error: ' + e.message, 'error');
+    }
+  }
+
+  async function deleteSession(id) {
+    if (!confirm(`¿Eliminar la sesión "${id}" completa (BD + archivos)?`)) return;
+    try {
+      const r = await fetch(`${API_BASE}/sessions.php?id=${id}`, { method: 'DELETE' });
+      const data = await r.json();
+      if (data.ok) {
+        toast('🗑️ Sesión eliminada', 'success');
+        loadGallery();
+      } else {
+        toast('✗ Error: ' + data.error, 'error');
+      }
+    } catch (e) {
+      toast('✗ Error: ' + e.message, 'error');
+    }
   }
 
   async function loadSession(id) {
     try {
       const r = await fetch(`${API_BASE}/sessions.php?id=${id}`);
       const data = await r.json();
-      if (!data.ok) { alert('Error cargando sesión'); return; }
+      if (!data.ok) { toast('Error cargando sesión', 'error'); return; }
       const session = data.session;
       state.sessionId = session.id;
       state.sessionTitle = session.title;
@@ -621,7 +791,7 @@
       dom.globalTolVal.textContent = state.tolerance;
       dom.globalBgMode.value = state.bgMode;
       dom.globalBgColor.value = state.bgColor;
-      dom.globalBgColor.style.display = state.bgMode === 'custom' ? 'block' : 'none';
+      dom.globalBgColor.style.display = state.bgMode === 'custom' ? 'inline-block' : 'none';
 
       generateScenes(session.scenes.length);
       session.scenes.forEach((sc, i) => {
@@ -629,15 +799,19 @@
           state.scenes[i].texto = sc.texto || '';
           state.scenes[i].outputUrl = sc.output_url;
           state.scenes[i].sceneId = sc.id;
+          state.scenes[i].frames = sc.frames || 0;
+          state.scenes[i].duration = sc.duration || 0;
+          state.scenes[i].chromaHits = sc.chroma_hits || 0;
           state.scenes[i].status = sc.output_url ? SCENE_STATUS.PROCESSED : (sc.texto ? SCENE_STATUS.DRAFT : SCENE_STATUS.EMPTY);
         }
       });
       renderScenes();
       updateMaster();
       document.getElementById('step1').scrollIntoView({ behavior: 'smooth' });
-      setProcessStatus(`✓ Sesión "${session.title}" cargada`, 'success');
+      setProcessStatus(`✓ Sesión "${session.title}" cargada · ${session.scenes.length} escenas`, 'success');
+      toast(`✓ Sesión "${session.title}" cargada`, 'success', 4000);
     } catch (e) {
-      alert('Error: ' + e.message);
+      toast('Error: ' + e.message, 'error');
     }
   }
 
@@ -680,7 +854,6 @@
     dom.btnProcessAll.addEventListener('click', processAll);
     dom.btnGalleryRefresh.addEventListener('click', loadGallery);
 
-    // Smooth scroll
     document.querySelectorAll('a[href^="#"]').forEach(a => {
       a.addEventListener('click', e => {
         const href = a.getAttribute('href');
@@ -702,6 +875,7 @@
     generateScenes(3);
     updateMaster();
     loadGallery();
+    setTimeout(() => toast('🎬 Teleprompter Video cargado · BanCoppel & Afore', 'success', 4000), 600);
   }
 
   if (document.readyState === 'loading') {
